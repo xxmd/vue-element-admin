@@ -1,4 +1,5 @@
 import { asyncRoutes, constantRoutes } from '@/router'
+import Layout from '@/layout/index.vue'
 
 /**
  * Use meta.role to determine if the current user has permission
@@ -47,18 +48,57 @@ const mutations = {
 }
 
 const actions = {
-  generateRoutes({ commit }, roles) {
+  // generateRoutes({ commit }, roles) {
+  //   return new Promise(resolve => {
+  //     let accessedRoutes
+  //     if (roles.includes('admin')) {
+  //       accessedRoutes = asyncRoutes || []
+  //     } else {
+  //       accessedRoutes = filterAsyncRoutes(asyncRoutes, roles)
+  //     }
+  //     commit('SET_ROUTES', accessedRoutes)
+  //     resolve(accessedRoutes)
+  //   })
+  // },
+  generateRoutes({ commit }, menus) {
     return new Promise(resolve => {
-      let accessedRoutes
-      if (roles.includes('admin')) {
-        accessedRoutes = asyncRoutes || []
-      } else {
-        accessedRoutes = filterAsyncRoutes(asyncRoutes, roles)
-      }
+      const accessedRoutes = buildRoutes(menus)
       commit('SET_ROUTES', accessedRoutes)
       resolve(accessedRoutes)
     })
   }
+}
+
+function buildRoutes(menus) {
+  const map = new Map()
+  const asyncRoutes = []
+  menus.forEach(menu => {
+    let path = menu.path
+    if (menu.type === 'CATALOG' && !menu.path.startsWith('/')) {
+      path = '/' + menu.path;
+    }
+    const route = {
+      path: path,
+      component: menu.type === 'CATALOG' ? Layout : loadView(menu.component),
+      name: menu.title,
+      meta: {
+        title: menu.title
+      }
+    }
+    if (menu.parentId) {
+      const parent = map.get(menu.parentId)
+      parent.children = parent.children || []
+      parent.children.push(route)
+    } else {
+      asyncRoutes.push(route)
+      map.set(menu.id, route)
+    }
+  })
+  return asyncRoutes
+}
+
+export const loadView = (view) => {
+  return (resolve) => require([`@/views/${view}`], resolve)
 }
 
 export default {
